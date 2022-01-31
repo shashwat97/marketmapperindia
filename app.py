@@ -9,7 +9,10 @@ st.set_page_config(layout="wide")
 st.title('Market Mapper India')
 
 #all_data = 'https://www.moneycontrol.com/stocks/marketstats/indexcomp.php?optex=BSE&opttopic=indexcomp&index=4'
-idf = pd.read_excel('nse_links.xlsx')
+
+idf = pd.read_csv('nse_links.csv')
+
+#idf = pd.read_excel('nse_links.xlsx')
 
 option = st.selectbox('Select Index: ', idf['Name'], index=0)
 all_data = idf[idf['Name'] == option]['Link'].values[0]
