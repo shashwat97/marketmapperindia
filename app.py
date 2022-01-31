@@ -1,38 +1,41 @@
 import streamlit as st
-import time
+import plotly.express as px
+import numpy as np
+import pandas as pd
+import requests
 
-from selenium import webdriver
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+st.set_page_config(layout="wide")
 
-URL = "https://www.unibet.fr/sport/football/europa-league/europa-league-matchs"
-XPATH = "//*[@class='ui-mainview-block eventpath-wrapper']"
-TIMEOUT = 20
+#all_data = 'https://www.moneycontrol.com/stocks/marketstats/indexcomp.php?optex=BSE&opttopic=indexcomp&index=4'
+idf = pd.read_excel('nse_links.xlsx')
 
-st.title("Test Selenium")
-st.markdown("You should see some random Football match text below in about 21 seconds")
+option = st.selectbox('Select Index: ', idf['Name'], index=0)
+all_data = idf[idf['Name'] == option]['Link'].values[0]
 
-firefoxOptions = Options()
-firefoxOptions.add_argument("--headless")
-driver = webdriver.Firefox(
-    options=firefoxOptions,
-    executable_path="/home/appuser/.conda/bin/geckodriver",
-)
-driver.get(URL)
+r = requests.get(all_data)
+df = pd.read_html(r.text)[0].dropna()
 
-try:
-    WebDriverWait(driver, TIMEOUT).until(
-        EC.visibility_of_element_located((By.XPATH, XPATH,))
-    )
+new_list = []
+for n in df['Industry'].str.split('-').tolist():
+    if len(n)==1:
+        n.append(n[0])
+    new_list.append(n)
 
-except TimeoutException:
-    st.warning("Timed out waiting for page to load")
-    driver.quit()
 
-time.sleep(10)
-elements = driver.find_elements_by_xpath(XPATH)
-st.write([el.text for el in elements])
-driver.quit()
+df['Company Name'] = df['Company Name'].str[:-34]
+df = df.merge(pd.DataFrame(new_list, columns = ['Inds', 'Sector']), right_index = True, left_index = True).dropna()
+
+
+fig = px.treemap(df, path=['Inds', 'Company Name'], values='Mkt Cap(Rs cr)',
+                  color='%Chg', hover_data=['Company Name'],
+                  color_continuous_scale='RdYlGn', range_color=[-4,4], 
+                  color_continuous_midpoint=np.median(df['%Chg']))
+
+
+fig.update_layout(margin = dict(t=50, l=25, r=25, b=25))
+#fig.show()
+fig.update_layout(height=800)
+
+# Plot!
+
+st.plotly_chart(fig, use_container_width=True, height=800)
